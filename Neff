@@ -1,0 +1,59 @@
+clc; clear;
+
+% Costanti
+c = 3e8;                        % velocità della luce (m/s)
+delta_L = 20e-6;               % differenza lunghezza MZI (20 micron)
+initial_power = 66;            % potenza iniziale in dBm
+power_step = 5;                % decremento per ogni file
+
+% Preparazione
+n_files = 7;
+powers = initial_power - (0:n_files-1)*power_step;
+neff_values = zeros(1, n_files);
+
+% Plot spettri
+figure;
+hold on;
+legend_entries = cell(1, n_files);
+
+for i = 1:n_files
+    % Carica dati
+    filename = sprintf('spectrum%d.txt', i);
+    data = load(filename);
+    lambda = data(:,1);       % lunghezza d'onda in metri
+    power_dBm = data(:,2);    % potenza in dBm
+
+    % Trova i minimi
+    [~, locs] = findpeaks(-power_dBm, 'SortStr','ascend', 'NPeaks', 2);
+    if length(locs) < 2
+        error('Non trovati 2 minimi in %s', filename);
+    end
+    lambda1 = lambda(locs(1));
+    lambda2 = lambda(locs(2));
+    fsr = abs(lambda2 - lambda1);
+
+    % Lunghezza centrale
+    lambda0 = mean([lambda1, lambda2]);
+
+    % Calcolo neff
+    neff = lambda0^2 / (fsr * delta_L);
+    neff_values(i) = neff;
+
+    % Plotta spettro
+    plot(lambda*1e9, power_dBm); % X in nm
+    legend_entries{i} = sprintf('P = %d dBm', powers(i));
+end
+
+xlabel('Wavelength (nm)');
+ylabel('Power (dBm)');
+title('Spettri a diverse potenze');
+legend(legend_entries, 'Location', 'best');
+grid on;
+
+% Plot n_eff in funzione della potenza
+figure;
+plot(powers, neff_values, 'o-', 'LineWidth', 2);
+xlabel('Optical Power (dBm)');
+ylabel('n_{eff}');
+title('n_{eff} vs Optical Power');
+grid on;
